@@ -146,19 +146,29 @@ func RunBot() {
   commandHandlers := map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate){
     "roll": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
       argument := i.ApplicationCommandData().Options[0].StringValue()
-      result := ParseExpression(argument)
-      
-      s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-        Type: discordgo.InteractionResponseChannelMessageWithSource,
-        Data: &discordgo.InteractionResponseData{
-          Content: fmt.Sprintf("You asked me to roll: %s\nYou rolled a **%d**!", argument, result),
-        },
-      })
+      result, error := ParseExpression(argument)
+
+      if error != nil {
+        s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+          Type: discordgo.InteractionResponseChannelMessageWithSource,
+          Data: &discordgo.InteractionResponseData{
+            Content: fmt.Sprintf("**Error**: %s", error),
+          },
+        })
+      } else {
+        s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+          Type: discordgo.InteractionResponseChannelMessageWithSource,
+          Data: &discordgo.InteractionResponseData{
+            Content: fmt.Sprintf("You asked me to roll: %s\nYou rolled a **%d**!", argument, result),
+          },
+        })
+      }
     },
     "make-macro": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
       name := i.ApplicationCommandData().Options[0].StringValue()
       expression := i.ApplicationCommandData().Options[1].StringValue()
 
+      // Check if a macro with this name already exists
       existing, _ := FindMacro(i.Interaction.GuildID, name)
       if existing != nil {
         s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
@@ -169,7 +179,20 @@ func RunBot() {
         })
         return
       }
-      
+
+      // Validate the macro expression
+      err := ValidateMacro(expression)
+      if err != nil {
+        s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+          Type: discordgo.InteractionResponseChannelMessageWithSource,
+          Data: &discordgo.InteractionResponseData{
+            Content: fmt.Sprintf("Invalid macro expression: %s", err),
+          },
+        })
+        return
+      }
+
+      // Create the new macro
       newMacro := Macro{
         Guild: i.Interaction.GuildID,
         Name: name,
@@ -191,7 +214,18 @@ func RunBot() {
 
       macro, _ := FindMacro(i.Interaction.GuildID, name)
       if macro != nil {
-        result := ParseMacro(macro.Expression, arguments)
+        result, err := ParseMacro(macro.Expression, arguments)
+
+        if err != nil {
+          s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+            Type: discordgo.InteractionResponseChannelMessageWithSource,
+            Data: &discordgo.InteractionResponseData{
+              Content: fmt.Sprintf("Error running macro: %s", err),
+            },
+          })
+          return
+        }
+
         s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
           Type: discordgo.InteractionResponseChannelMessageWithSource,
           Data: &discordgo.InteractionResponseData{

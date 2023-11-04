@@ -7,6 +7,8 @@ import (
   "strconv"
   "math/rand"
   "time"
+  "errors"
+  "slices"
 )
 
 /* Randomly rolls based on the given dice notation
@@ -58,7 +60,7 @@ func tokenize(input string) []string {
  * Then, use a stack procedure to evaluate the reverse polish notation,
  * rolling dice as we go!
  */
-func parse(tokens []string) int {
+func parse(tokens []string) (int, error) {
   // Regex we'll need a little further down
   valuePattern := regexp.MustCompile(`\d+d\d+|\d+`)
   operatorPattern := regexp.MustCompile(`[+\-*/]`)
@@ -84,12 +86,25 @@ func parse(tokens []string) int {
     case leftParenPattern.MatchString(token):
       operatorStack = append(operatorStack, token)
     case rightParenPattern.MatchString(token):
+      if len(operatorStack) == 0 {
+        return 0, errors.New("Unable to parse: mismatched parens")
+      }
+      
       for operatorStack[len(operatorStack)-1] != "(" {
         outputQueue = append(outputQueue, operatorStack[len(operatorStack)-1])
         operatorStack = operatorStack[:len(operatorStack)-1]
       }
+
+      if len(operatorStack) == 0 {
+        return 0, errors.New("Unable to parse: mismatched parens")
+      }
+      
       operatorStack = operatorStack[:len(operatorStack)-1]
     }
+  }
+
+  if slices.Contains(operatorStack, "(") {
+    return 0, errors.New("Unable to parse: mismatched parens")
   }
 
   for len(operatorStack) > 0 {
@@ -107,6 +122,10 @@ func parse(tokens []string) int {
       n, _ := strconv.Atoi(token)
       stack = append(stack, n)
     case operatorPattern.MatchString(token):
+      if len(stack) == 0 {
+        return 0, errors.New("Unable to parse: too many operators")
+      }
+      
       num2 := stack[len(stack)-1]
       stack = stack[:len(stack)-1]
 
@@ -126,22 +145,37 @@ func parse(tokens []string) int {
     }
   }
 
-  return stack[0]
+  if len(stack) != 1 {
+    return 0, errors.New("Unable to parse malformed input")
+  }
+  
+  return stack[0], nil
 }
 
 /* Parses the given expression.
  * Expression must contain only integers and dice notation,
  * and may only use the operators + - * / and ()
  */
-func ParseExpression(input string) int {
-  return parse(tokenize(input))
+func ParseExpression(input string) (int, error) {
+  // Tokenize
+  tokenized := tokenize(input)
+  
+  // Quick validation: Only valid tokens in input string
+  inputToCompare := strings.ReplaceAll(input, " ", "")
+  inputFromTokenized := strings.Join(tokenized, "")
+  if inputToCompare != inputFromTokenized {
+    return 0, errors.New("Invalid tokens found")
+  }
+
+  // Parse
+  return parse(tokenized)
 }
 
 /* Parses the given macro. Macros are expressions which contain letters (A, B, C..)
  * representing variables in the expression. The variables argument contains the values
  * used to substitute in the macro.
  */
-func ParseMacro(input string, variables []string) int {
+func ParseMacro(input string, variables []string) (int, error) {
   // Set up variables for macros (A, B, C, etc..)
   variablesMap := make(map[string]string)
   for i, v := range variables {
@@ -157,5 +191,5 @@ func ParseMacro(input string, variables []string) int {
   }
 
   // Parse
-  return parse(tokenize(input))
+  return ParseExpression(input)
 }
