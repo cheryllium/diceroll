@@ -7,7 +7,6 @@ import (
   "os"
   "os/signal"
 
-  "github.com/joho/godotenv"
   "github.com/bwmarrin/discordgo"
 )
 
@@ -22,15 +21,6 @@ import (
  * - /edit-macro <name> <expression> | replaces existing macro with given expression
  */
 func RunBot() {
-  // Initialize the DB
-  InitDB()
-  
-  // Load .env file
-  err := godotenv.Load(".env")
-  if err != nil {
-    fmt.Println("Error loading .env file")
-  }
-  
   // Set up the discord bot
   token := os.Getenv("DISCORD_TOKEN")
   dg, err := discordgo.New("Bot " + token)
@@ -343,6 +333,27 @@ func RunBot() {
 
   // Add command handlers
   dg.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
+    // Check if server is allowed to use the bot
+    serverHasAccess, err := ServerHasAccess(i.Interaction.GuildID)
+    if err != nil {
+      s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+        Type: discordgo.InteractionResponseChannelMessageWithSource,
+        Data: &discordgo.InteractionResponseData{
+          Content: fmt.Sprintf("Error loading list of allowed servers. Please contact bot admin for support."),
+        },
+      })
+      return
+    }
+    if !serverHasAccess {
+      s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+        Type: discordgo.InteractionResponseChannelMessageWithSource,
+        Data: &discordgo.InteractionResponseData{
+          Content: fmt.Sprintf("Your server does not have access to use the bot."),
+        },
+      })
+      return
+    }
+    
     if h, ok := commandHandlers[i.ApplicationCommandData().Name]; ok {
       h(s, i)
     }
