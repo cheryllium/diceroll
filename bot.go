@@ -281,7 +281,7 @@ func RunBot() {
 - Example usage: `+"`"+`/roll 4d10 + 5`+"`"+`
 - You can give it any arithmetic expression with both numbers and dice notation.
 - Dice notation must be in the form XdY, where X and Y are integers.
-- For advantage and disadvantage, you can write ! or ? after your dice notation to get the highest and lowest roll respectively. For example, 4d10! will get the highest of the for rolls, while 4d10? will get the lowest.
+- For advantage and disadvantage, you can write ! or ? after your dice notation to get the highest and lowest roll respectively. For example, 4d10! will get the highest of the four rolls, while 4d10? will get the lowest.
 - You can roll up to d200 and up to 20 rolls at once.
 
 🎲 Macros  🎲
