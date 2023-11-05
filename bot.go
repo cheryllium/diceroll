@@ -174,7 +174,7 @@ func RunBot() {
       result, rolls, error := ParseExpression(argument)
 
       if error != nil {
-        sendDiscordMessage(s, i, fmt.Sprintf("**Error**: %s", error))
+        sendDiscordMessage(s, i, fmt.Sprintf("**Uh-oh!** Error occurred parsing: %s \n%s", argument, error))
       } else {
         sendDiscordMessage(s, i, formatRollResult(argument, result, rolls))
       }
@@ -217,7 +217,7 @@ func RunBot() {
         result, rolls, err := ParseExpression(expression)
 
         if err != nil {
-          sendDiscordMessage(s, i, fmt.Sprintf("Error running macro: %s", err))
+          sendDiscordMessage(s, i, fmt.Sprintf("**Uh-oh!** Error occurred parsing: %s \n%s", expression, err))
           return
         }
         sendDiscordMessage(s, i, formatRollResult(expression, result, rolls))

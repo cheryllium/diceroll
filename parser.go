@@ -172,6 +172,10 @@ func parse(tokens []string) (int, []DiceRoll, error) {
       
       num2 := stack[len(stack)-1]
       stack = stack[:len(stack)-1]
+      
+      if len(stack) == 0 {
+        return 0, rollResults, errors.New("Unable to parse: too many operators")
+      }
 
       num1 := stack[len(stack)-1]
       stack = stack[:len(stack)-1]
