@@ -11,9 +11,26 @@ import (
   "slices"
 )
 
+/* Struct representing the result(s) of a dice roll
+ */
+type DiceRoll struct {
+  Expression string
+  Results []int
+}
+
 /* Randomly rolls based on the given dice notation
  */
-func rollDice(diceNotation string) int {
+func rollDice(diceNotation string) (int, []int) {
+  lastChar := diceNotation[len(diceNotation)-1]
+  mode := "sum"
+  if lastChar == '!' {
+    mode = "highest"
+    diceNotation = diceNotation[:len(diceNotation)-1]
+  } else if lastChar == '?' {
+    mode = "lowest"
+    diceNotation = diceNotation[:len(diceNotation)-1]
+  }
+  
   parts := strings.Split(diceNotation, "d")
 
   numRolls, _ := strconv.Atoi(parts[0])
@@ -21,12 +38,27 @@ func rollDice(diceNotation string) int {
 
   rand.Seed(time.Now().UnixNano())
 
-  sum := 0
+  rolls := []int{}
+  result := 0
   for i := 0; i < numRolls; i++ {
-    sum += rand.Intn(sides) + 1
-  }
+    rollValue := rand.Intn(sides) + 1
+    rolls = append(rolls, rollValue)
 
-  return sum
+    switch mode {
+    case "sum":
+      result += rollValue
+    case "highest":
+      if rollValue > result {
+        result = rollValue
+      }
+    case "lowest":
+      if result == 0 || rollValue < result {
+        result = rollValue
+      }
+    }
+  }
+  
+  return result, rolls
 }
 
 /* Given two operators, op1 and op2, checks if op1 has greater precedence.
@@ -46,7 +78,7 @@ func hasGreaterPrecedence(op1 string, op2 string) bool {
 func tokenize(input string) []string {
   integerPattern := `\d+`
   operatorPattern := `[+\-*/()]`
-  dicePattern := `\d+d\d+`
+  dicePattern := `\d+d\d+[!?]?`
   tokenPattern := fmt.Sprintf("(%s)|(%s)|(%s)", dicePattern, integerPattern, operatorPattern)
   
   re := regexp.MustCompile(tokenPattern)
@@ -60,13 +92,16 @@ func tokenize(input string) []string {
  * Then, use a stack procedure to evaluate the reverse polish notation,
  * rolling dice as we go!
  */
-func parse(tokens []string) (int, error) {
+func parse(tokens []string) (int, []DiceRoll, error) {
+  // An array to contain the results of dice rolls
+  rollResults := []DiceRoll{}
+
   // Regex we'll need a little further down
   valuePattern := regexp.MustCompile(`\d+d\d+|\d+`)
   operatorPattern := regexp.MustCompile(`[+\-*/]`)
   leftParenPattern := regexp.MustCompile(`\(`)
   rightParenPattern := regexp.MustCompile(`\)`)
-  dicePattern := regexp.MustCompile(`\d+d\d+`)
+  dicePattern := regexp.MustCompile(`\d+d\d+[!?]?`)
   integerPattern := regexp.MustCompile(`\d+`)
   
   // First, do the shunting yard algorithm to get it into reverse polish notation
@@ -87,7 +122,7 @@ func parse(tokens []string) (int, error) {
       operatorStack = append(operatorStack, token)
     case rightParenPattern.MatchString(token):
       if len(operatorStack) == 0 {
-        return 0, errors.New("Unable to parse: mismatched parens")
+        return 0, rollResults, errors.New("Unable to parse: mismatched parens")
       }
       
       for operatorStack[len(operatorStack)-1] != "(" {
@@ -96,7 +131,7 @@ func parse(tokens []string) (int, error) {
       }
 
       if len(operatorStack) == 0 {
-        return 0, errors.New("Unable to parse: mismatched parens")
+        return 0, rollResults, errors.New("Unable to parse: mismatched parens")
       }
       
       operatorStack = operatorStack[:len(operatorStack)-1]
@@ -104,7 +139,7 @@ func parse(tokens []string) (int, error) {
   }
 
   if slices.Contains(operatorStack, "(") {
-    return 0, errors.New("Unable to parse: mismatched parens")
+    return 0, rollResults, errors.New("Unable to parse: mismatched parens")
   }
 
   for len(operatorStack) > 0 {
@@ -117,13 +152,18 @@ func parse(tokens []string) (int, error) {
   for _, token := range outputQueue {
     switch {
     case dicePattern.MatchString(token):
-      stack = append(stack, rollDice(token))
+      rollResult, rolls := rollDice(token)
+      rollResults = append(rollResults, DiceRoll{
+        Expression: token,
+        Results: rolls,
+      })
+      stack = append(stack, rollResult)
     case integerPattern.MatchString(token):
       n, _ := strconv.Atoi(token)
       stack = append(stack, n)
     case operatorPattern.MatchString(token):
       if len(stack) == 0 {
-        return 0, errors.New("Unable to parse: too many operators")
+        return 0, rollResults, errors.New("Unable to parse: too many operators")
       }
       
       num2 := stack[len(stack)-1]
@@ -146,17 +186,17 @@ func parse(tokens []string) (int, error) {
   }
 
   if len(stack) != 1 {
-    return 0, errors.New("Unable to parse malformed input")
+    return 0, rollResults, errors.New("Unable to parse malformed input")
   }
   
-  return stack[0], nil
+  return stack[0], rollResults, nil
 }
 
 /* Parses the given expression.
  * Expression must contain only integers and dice notation,
  * and may only use the operators + - * / and ()
  */
-func ParseExpression(input string) (int, error) {
+func ParseExpression(input string) (int, []DiceRoll, error) {
   // Tokenize
   tokenized := tokenize(input)
   
@@ -164,18 +204,17 @@ func ParseExpression(input string) (int, error) {
   inputToCompare := strings.ReplaceAll(input, " ", "")
   inputFromTokenized := strings.Join(tokenized, "")
   if inputToCompare != inputFromTokenized {
-    return 0, errors.New("Invalid tokens found")
+    return 0, []DiceRoll{}, errors.New("Invalid tokens found")
   }
 
   // Parse
   return parse(tokenized)
 }
 
-/* Parses the given macro. Macros are expressions which contain letters (A, B, C..)
- * representing variables in the expression. The variables argument contains the values
- * used to substitute in the macro.
+/* Given a macro and a list of values, substitutes them into
+ * the macro to produce an expression with the values filled in. 
  */
-func ParseMacro(input string, variables []string) (int, error) {
+func FillMacro(input string, variables[]string) string {
   // Set up variables for macros (A, B, C, etc..)
   variablesMap := make(map[string]string)
   for i, v := range variables {
@@ -190,6 +229,5 @@ func ParseMacro(input string, variables []string) (int, error) {
     input = strings.Replace(input, key, value, -1)
   }
 
-  // Parse
-  return ParseExpression(input)
+  return input
 }

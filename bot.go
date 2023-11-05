@@ -10,6 +10,33 @@ import (
   "github.com/bwmarrin/discordgo"
 )
 
+/* Formats the result of a dice roll in a pretty, human-readable way.
+ */
+func formatRollResult(expression string, result int, rolls []DiceRoll) string {
+  rollResults := ""
+  for _, r := range rolls {
+    rollResults += fmt.Sprintf("> 🎲 **%s** %v\n", r.Expression, r.Results)
+  }
+  return fmt.Sprintf(
+    "You asked me to roll: %s\nYou rolled a **%d**!\n> *ROLL RESULTS*\n%s",
+    expression,
+    result,
+    rollResults,
+  )
+}
+
+/* Sends a message to Discord. 
+ * Used for the bot to respond to slash commands. 
+ */
+func sendDiscordMessage(s* discordgo.Session, i *discordgo.InteractionCreate, message string) {
+  s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+    Type: discordgo.InteractionResponseChannelMessageWithSource,
+    Data: &discordgo.InteractionResponseData{
+      Content: message,
+    },
+  })
+}
+
 /* Sets up and runs a Discord bot to respond to slash commands for rolling dice.
  * The following commands are supported: 
  * - /roll <expression> | rolls the given expression
@@ -136,22 +163,12 @@ func RunBot() {
   commandHandlers := map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate){
     "roll": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
       argument := i.ApplicationCommandData().Options[0].StringValue()
-      result, error := ParseExpression(argument)
+      result, rolls, error := ParseExpression(argument)
 
       if error != nil {
-        s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-          Type: discordgo.InteractionResponseChannelMessageWithSource,
-          Data: &discordgo.InteractionResponseData{
-            Content: fmt.Sprintf("**Error**: %s", error),
-          },
-        })
+        sendDiscordMessage(s, i, fmt.Sprintf("**Error**: %s", error))
       } else {
-        s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-          Type: discordgo.InteractionResponseChannelMessageWithSource,
-          Data: &discordgo.InteractionResponseData{
-            Content: fmt.Sprintf("You asked me to roll: %s\nYou rolled a **%d**!", argument, result),
-          },
-        })
+        sendDiscordMessage(s, i, formatRollResult(argument, result, rolls))
       }
     },
     "make-macro": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
@@ -161,24 +178,14 @@ func RunBot() {
       // Check if a macro with this name already exists
       existing, _ := FindMacro(i.Interaction.GuildID, name)
       if existing != nil {
-        s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-          Type: discordgo.InteractionResponseChannelMessageWithSource,
-          Data: &discordgo.InteractionResponseData{
-            Content: fmt.Sprintf("A macro with the name '%s' already exists.", name),
-          },
-        })
+        sendDiscordMessage(s, i, fmt.Sprintf("A macro with the name '%s' already exists.", name))
         return
       }
 
       // Validate the macro expression
       err := ValidateMacro(expression)
       if err != nil {
-        s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-          Type: discordgo.InteractionResponseChannelMessageWithSource,
-          Data: &discordgo.InteractionResponseData{
-            Content: fmt.Sprintf("Invalid macro expression: %s", err),
-          },
-        })
+        sendDiscordMessage(s, i, fmt.Sprintf("Invalid macro expression: %s", err))
         return
       }
 
@@ -190,13 +197,7 @@ func RunBot() {
       }
 
       MakeMacro(&newMacro)
-      
-      s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-        Type: discordgo.InteractionResponseChannelMessageWithSource,
-        Data: &discordgo.InteractionResponseData{
-          Content: fmt.Sprintf("Macro '%s' created!\nMacro expression: %s", name, expression),
-        },
-      })
+      sendDiscordMessage(s, i, fmt.Sprintf("Macro '%s' created!\nMacro expression: %s", name, expression))
     },
     "roll-macro": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
       name := i.ApplicationCommandData().Options[0].StringValue()
@@ -204,31 +205,16 @@ func RunBot() {
 
       macro, _ := FindMacro(i.Interaction.GuildID, name)
       if macro != nil {
-        result, err := ParseMacro(macro.Expression, arguments)
+        expression := FillMacro(macro.Expression, arguments)
+        result, rolls, err := ParseExpression(expression)
 
         if err != nil {
-          s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-            Type: discordgo.InteractionResponseChannelMessageWithSource,
-            Data: &discordgo.InteractionResponseData{
-              Content: fmt.Sprintf("Error running macro: %s", err),
-            },
-          })
+          sendDiscordMessage(s, i, fmt.Sprintf("Error running macro: %s", err))
           return
         }
-
-        s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-          Type: discordgo.InteractionResponseChannelMessageWithSource,
-          Data: &discordgo.InteractionResponseData{
-            Content: fmt.Sprintf("You asked me to roll the '%s' macro.\nYou rolled a **%d**!", name, result),
-          },
-        })
+        sendDiscordMessage(s, i, formatRollResult(expression, result, rolls))
       } else {
-        s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-          Type: discordgo.InteractionResponseChannelMessageWithSource,
-          Data: &discordgo.InteractionResponseData{
-            Content: fmt.Sprintf("No macro with the name '%s' was found.", name),
-          },
-        })
+        sendDiscordMessage(s, i, fmt.Sprintf("No macro with the name '%s' was found.", name))
       }
     },
     "list-macros": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
@@ -238,19 +224,9 @@ func RunBot() {
         for _, m := range macros {
           listMessage += fmt.Sprintf("**%s**: %s\n", m.Name, m.Expression)
         }
-        s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-          Type: discordgo.InteractionResponseChannelMessageWithSource,
-          Data: &discordgo.InteractionResponseData{
-            Content: listMessage,
-          },
-        })
+        sendDiscordMessage(s, i, listMessage)
       } else {
-        s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-          Type: discordgo.InteractionResponseChannelMessageWithSource,
-          Data: &discordgo.InteractionResponseData{
-            Content: "No macros found. Create some with the /make-macro command.",
-          },
-        })
+        sendDiscordMessage(s, i, "No macros found. Create some with the /make-macro command.")
       }
     },
     "view-macro": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
@@ -258,19 +234,9 @@ func RunBot() {
 
       macro, _ := FindMacro(i.Interaction.GuildID, name)
       if macro != nil {
-        s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-          Type: discordgo.InteractionResponseChannelMessageWithSource,
-          Data: &discordgo.InteractionResponseData{
-            Content: fmt.Sprintf("Macro '%s' found: %s", macro.Name, macro.Expression),
-          },
-        })
+        sendDiscordMessage(s, i, fmt.Sprintf("Macro '%s' found: %s", macro.Name, macro.Expression))
       } else {
-        s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-          Type: discordgo.InteractionResponseChannelMessageWithSource,
-          Data: &discordgo.InteractionResponseData{
-            Content: fmt.Sprintf("No macro with the name '%s' was found.", name),
-          },
-        })
+        sendDiscordMessage(s, i, fmt.Sprintf("No macro with the name '%s' was found.", name))
       }
     },
     "delete-macro": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
@@ -279,19 +245,10 @@ func RunBot() {
       macro, _ := FindMacro(i.Interaction.GuildID, name)
       if macro != nil {
         DeleteMacro(macro)
-        s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-          Type: discordgo.InteractionResponseChannelMessageWithSource,
-          Data: &discordgo.InteractionResponseData{
-            Content: fmt.Sprintf("Macro '%s' was deleted.", name),
-          },
-        })
+
+        sendDiscordMessage(s, i, fmt.Sprintf("Macro '%s' was deleted.", name))
       } else {
-        s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-          Type: discordgo.InteractionResponseChannelMessageWithSource,
-          Data: &discordgo.InteractionResponseData{
-            Content: fmt.Sprintf("No macro with the name '%s' was found.", name),
-          },
-        })
+        sendDiscordMessage(s, i, fmt.Sprintf("No macro with the name '%s' was found.", name))
       }
     },
     "edit-macro": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
@@ -303,19 +260,9 @@ func RunBot() {
         macro.Expression = expression
         EditMacro(macro)
         
-        s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-          Type: discordgo.InteractionResponseChannelMessageWithSource,
-          Data: &discordgo.InteractionResponseData{
-            Content: fmt.Sprintf("Macro '%s' was updated: %s", name, expression),
-          },
-        })
+        sendDiscordMessage(s, i, fmt.Sprintf("Macro '%s' was updated: %s", name, expression))
       } else {
-        s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-          Type: discordgo.InteractionResponseChannelMessageWithSource,
-          Data: &discordgo.InteractionResponseData{
-            Content: fmt.Sprintf("No macro with the name '%s' was found.", name),
-          },
-        })
+        sendDiscordMessage(s, i, fmt.Sprintf("No macro with the name '%s' was found.", name))
       }
     },
   }

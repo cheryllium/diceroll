@@ -29,6 +29,6 @@ func ValidateMacro(expression string) error {
     inputs[i] = "1"
   }
 
-  _, err := ParseMacro(expression, inputs)
+  _, _, err := ParseExpression(FillMacro(expression, inputs))
   return err
 }
