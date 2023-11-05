@@ -46,9 +46,11 @@ func sendDiscordMessage(s* discordgo.Session, i *discordgo.InteractionCreate, me
  * - /view-macro <name> | views the macro with the given name
  * - /delete-macro <name> | deletes the macro with the given name
  * - /edit-macro <name> <expression> | replaces existing macro with given expression
+ * - /help-me-roll | displays help/usage information
  */
 func RunBot() {
   // Set up the discord bot
+  fmt.Println("Initializing bot...")
   token := os.Getenv("DISCORD_TOKEN")
   dg, err := discordgo.New("Bot " + token)
   if err != nil {
@@ -57,6 +59,7 @@ func RunBot() {
   }
 
   // Open websocket connection to Discord and begin listening
+  fmt.Println("Opening websocket connection...")
   err = dg.Open()
   if err != nil {
     fmt.Println("Error opening connection: ", err)
@@ -64,6 +67,7 @@ func RunBot() {
   }
 
   // Set up commands
+  fmt.Println("Registering commands...")
   commands := []*discordgo.ApplicationCommand{
     {
       Name: "roll",
@@ -158,6 +162,10 @@ func RunBot() {
           Required: true,
         },
       },
+    },
+    {
+      Name: "help-me-roll",
+      Description: "Shows you how to use the DiceMancer bot",
     },
   }
   commandHandlers := map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate){
@@ -265,6 +273,43 @@ func RunBot() {
         sendDiscordMessage(s, i, fmt.Sprintf("No macro with the name '%s' was found.", name))
       }
     },
+    "help-me-roll": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
+      helpMessage := `**DiceMancer Bot Available Commands**
+
+🎲 Basic Usage  🎲
+**/roll** <expression>
+- Example usage: `+"`"+`/roll 4d10 + 5`+"`"+`
+- You can give it any arithmetic expression with both numbers and dice notation.
+- Dice notation must be in the form XdY, where X and Y are integers.
+- For advantage and disadvantage, you can write ! or ? after your dice notation to get the highest and lowest roll respectively. For example, 4d10! will get the highest of the for rolls, while 4d10? will get the lowest.
+- You can roll up to d200 and up to 20 rolls at once.
+
+🎲 Macros  🎲
+A macro is an expression you can re-use again and again. Macros have inputs, which must be written as uppercase letters starting from A. If the macro only has one input, it must be named A; two, must be named A and B, and so on.
+
+For example, you can have a macro: `+"`"+`4 * (A + B)`+"`"+`
+You will be able to roll this macro substituting anything you'd like for the variables A and B.
+
+**/make-macro** <name> <expression>
+- This is used to create a macro. For example: `+"`"+`/make-macro my-macro 4 * (A + B)`+"`"+`
+- Macros can be named anything, with a maximum of 128 characters.
+
+**/roll-macro** <name> <inputs separated by spaces>
+- This is how you roll a macro once it's created. Specify the name of the macro, following by what you want the A, B, C, etc to be separated by spaces. (They can be either numbers or dice notation.)
+- For example: `+"`"+`/roll-macro my-macro 10 4d6`+"`"+`
+
+There are several other commands to help you view, edit, and delete macros: 
+**/list-macros** | Lists all macros available.
+**/view-macro** <name> | Displays the macro with the given name.
+**/delete-macro** <name> | Deletes the macro with the given name.
+**/edit-macro** <name> <expression> | Updates the existing macro.
+
+Macros are tied to the server and macros created by this server can only be used in this server. 
+
+Please enjoy using DiceMancer, and feel free to contact the developer <@284867832376721409> if you have further questions or comments.
+`
+      sendDiscordMessage(s, i, helpMessage)
+    },
   }
 
   // Register commands
@@ -279,6 +324,7 @@ func RunBot() {
   }
 
   // Add command handlers
+  fmt.Println("Adding command handlers...")
   dg.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
     // Check if server is allowed to use the bot
     serverHasAccess, err := ServerHasAccess(i.Interaction.GuildID)
@@ -308,7 +354,7 @@ func RunBot() {
 
   // Keep running this program until interrupt signal is received
   defer dg.Close()
-  fmt.Println("Bot is now running. Press Ctrl+C to exit.")
+  fmt.Println("** Bot is now running. Press Ctrl+C to exit. **")
   stop := make(chan os.Signal, 1)
   signal.Notify(stop, os.Interrupt)
   <- stop

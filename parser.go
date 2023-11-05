@@ -36,6 +36,10 @@ func rollDice(diceNotation string) (int, []int) {
   numRolls, _ := strconv.Atoi(parts[0])
   sides, _ := strconv.Atoi(parts[1])
 
+  if sides < 1 || sides > 200 || numRolls < 1 || numRolls > 20 {
+    return 0, []int{}
+  }
+
   rand.Seed(time.Now().UnixNano())
 
   rolls := []int{}
