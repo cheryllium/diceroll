@@ -60,7 +60,7 @@ func EditMacro(macro *Macro) {
 
 func ListMacros(guild string) ([]Macro, error) {
   var macros []Macro
-  result := db.Where("Guild = ?", guild).Find(&macros)
+  result := db.Where("Guild = ?", guild).Order("Name").Find(&macros)
   if result.Error != nil {
     return nil, errors.New("Database error (possibly no rows found)")
   }
