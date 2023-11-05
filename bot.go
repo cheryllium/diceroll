@@ -285,7 +285,7 @@ func RunBot() {
 - You can roll up to d200 and up to 20 rolls at once.
 
 🎲 Macros  🎲
-A macro is an expression you can re-use again and again. Macros have inputs, which must be written as uppercase letters starting from A. If the macro only has one input, it must be named A; two, must be named A and B, and so on.
+A macro is an expression you can re-use again and again. Macros can have inputs, which must be written as uppercase letters starting from A. If the macro only has one input, it must be named A; two, must be named A and B, and so on.
 
 For example, you can have a macro: `+"`"+`4 * (A + B)`+"`"+`
 You will be able to roll this macro substituting anything you'd like for the variables A and B.
