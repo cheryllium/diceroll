@@ -113,7 +113,7 @@ func RunBot() {
           Type: discordgo.ApplicationCommandOptionString,
           Name: "inputs",
           Description: "The inputs to the macro, separated by spaces",
-          Required: true,
+          Required: false,
         },
       },
     },
@@ -209,7 +209,10 @@ func RunBot() {
     },
     "roll-macro": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
       name := i.ApplicationCommandData().Options[0].StringValue()
-      arguments := strings.Fields(i.ApplicationCommandData().Options[1].StringValue())
+      arguments := []string{}
+      if len(i.ApplicationCommandData().Options) == 2 {
+        arguments = strings.Fields(i.ApplicationCommandData().Options[1].StringValue())
+      }
 
       macro, _ := FindMacro(i.Interaction.GuildID, name)
       if macro != nil {
