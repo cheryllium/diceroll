@@ -316,14 +316,12 @@ Please enjoy using DiceMancer, and feel free to contact the developer <@28486783
   }
 
   // Register commands
-  registeredCommands := make([]*discordgo.ApplicationCommand, len(commands))
-  for i, v := range commands {
-    cmd, err := dg.ApplicationCommandCreate(dg.State.User.ID, "", v)
-    if err != nil {
-      fmt.Printf("Cannot create %v command", v.Name, err)
-      return
-    }
-    registeredCommands[i] = cmd
+  _, err = dg.ApplicationCommandBulkOverwrite(
+    dg.State.User.ID, "", commands,
+  )
+  if err != nil {
+    fmt.Printf("Error registering commands: %s", err)
+    return
   }
 
   // Add command handlers
@@ -361,15 +359,4 @@ Please enjoy using DiceMancer, and feel free to contact the developer <@28486783
   stop := make(chan os.Signal, 1)
   signal.Notify(stop, os.Interrupt)
   <- stop
-
-  // Uncomment if you'd like to remove all commands when exiting the program
-  /*
-  fmt.Println("Removing commands")
-  for _, v := range registeredCommands {
-    err := dg.ApplicationCommandDelete(dg.State.User.ID, "", v.ID)
-    if err != nil {
-      fmt.Printf("Cannot delete %v command: %v", v.Name, err)
-    }
-  }
-  */
 }
