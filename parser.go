@@ -82,7 +82,7 @@ func hasGreaterPrecedence(op1 string, op2 string) bool {
 func tokenize(input string) []string {
   integerPattern := `\d+`
   operatorPattern := `[+\-*/()]`
-  dicePattern := `\d+d\d+[!?]?`
+  dicePattern := `\d*d\d+[!?]?`
   tokenPattern := fmt.Sprintf("(%s)|(%s)|(%s)", dicePattern, integerPattern, operatorPattern)
   
   re := regexp.MustCompile(tokenPattern)
@@ -101,12 +101,16 @@ func parse(tokens []string) (int, []DiceRoll, error) {
   rollResults := []DiceRoll{}
 
   // Regex we'll need a little further down
-  valuePattern := regexp.MustCompile(`\d+d\d+|\d+`)
+  diePattern := regexp.MustCompile(`^d\d+[!?]?`)
+  dicePattern := regexp.MustCompile(`\d+d\d+[!?]?`)
+  integerPattern := regexp.MustCompile(`\d+`)
+
+  valuePattern := regexp.MustCompile(fmt.Sprintf(
+    "(%s)|(%s)|(%s)", dicePattern, diePattern, integerPattern,
+  ))
   operatorPattern := regexp.MustCompile(`[+\-*/]`)
   leftParenPattern := regexp.MustCompile(`\(`)
   rightParenPattern := regexp.MustCompile(`\)`)
-  dicePattern := regexp.MustCompile(`\d+d\d+[!?]?`)
-  integerPattern := regexp.MustCompile(`\d+`)
   
   // First, do the shunting yard algorithm to get it into reverse polish notation
   operatorStack := []string{}
@@ -155,6 +159,13 @@ func parse(tokens []string) (int, []DiceRoll, error) {
   stack := []int{}
   for _, token := range outputQueue {
     switch {
+    case diePattern.MatchString(token):
+      rollResult, rolls := rollDice("1" + token)
+      rollResults = append(rollResults, DiceRoll{
+        Expression: token,
+        Results: rolls,
+      })
+      stack = append(stack, rollResult)
     case dicePattern.MatchString(token):
       rollResult, rolls := rollDice(token)
       rollResults = append(rollResults, DiceRoll{
@@ -212,7 +223,7 @@ func ParseExpression(input string) (int, []DiceRoll, error) {
   inputToCompare := strings.ReplaceAll(input, " ", "")
   inputFromTokenized := strings.Join(tokenized, "")
   if inputToCompare != inputFromTokenized {
-    return 0, []DiceRoll{}, errors.New("Invalid tokens found")
+    return 0, []DiceRoll{}, errors.New(fmt.Sprintf("Invalid tokens found %v %v", inputToCompare, inputFromTokenized))
   }
 
   // Parse

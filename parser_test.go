@@ -147,3 +147,129 @@ func TestParseDiceWithMath(t *testing.T) {
     }
   }
 }
+
+/* Test that rolling shorthand works */
+func TestParseShorthand(t *testing.T) {
+  expression := "d20"
+  result, rolls, error := ParseExpression(expression)
+  
+  if error != nil {
+    t.Fatalf("Parsing %s failed with error: %s", expression, error)
+  }
+
+  if len(rolls) != 1 {
+    t.Fatalf("Roll %s: Wrong number of diceroll expressions in result", expression)
+  }
+  
+  if rolls[0].Expression != "d20" {
+    t.Fatalf("Roll %s: d20 not found in the results", expression)
+  }
+
+  if len(rolls[0].Results) != 1 {
+    t.Fatalf("Roll %s: rolled %d instead of 1 die for d20", expression, len(rolls[0].Results))
+  }
+
+  rollResult := rolls[0].Results[0]
+  if rollResult < 1 || rollResult > 20 {
+    t.Fatalf("Roll %s: Roll result %d out of range", expression, rollResult)
+  }
+
+  if rollResult != result {
+    t.Fatalf("Roll %s: Result of expression (%d) not what expected (%d)", expression, result, rollResult)
+  }
+}
+
+/* Test that rolling shorthand ("d20") notation works in an expression */
+func TestParseShorthand_1(t *testing.T) {
+  expression := "2d20 + d20"
+  result, rolls, error := ParseExpression(expression)
+
+  if error != nil {
+    t.Fatalf("Parsing %s failed with error: %s", expression, error)
+  }
+
+  if len(rolls) != 2 {
+    t.Fatalf("Roll %s: Wrong number of diceroll expressions in result", expression)
+  }
+
+  if rolls[0].Expression != "2d20" {
+    t.Fatalf("Roll %s: 2d20 not found in the results", expression)
+  }
+  
+  if rolls[1].Expression != "d20" {
+    t.Fatalf("Roll %s: d20 not found in the results", expression)
+  }
+
+  if len(rolls[0].Results) != 2 {
+    t.Fatalf("Roll %s: rolled %d instead of 2 dice for 2d20", expression, len(rolls[0].Results))
+  }
+  
+  if len(rolls[1].Results) != 1 {
+    t.Fatalf("Roll %s: rolled %d instead of 1 die for d20", expression, len(rolls[1].Results))
+  }
+
+  sum := 0
+  for _, v := range rolls[0].Results {
+    if v < 1 || v > 20 {
+      t.Fatalf("Roll %s: rolled a %d which is out of range for 2d20", expression, v)
+    }
+    sum += v
+  }
+
+  rollResult := rolls[1].Results[0]
+  if rollResult < 1 || rollResult > 20 {
+    t.Fatalf("Roll %s: got invalid roll result for d20: %d", expression, rollResult)
+  }
+  
+  expected := rollResult + sum
+  if result != expected {
+    t.Fatalf("Roll %s: Result was %d instead of %d", expression, result, expected)
+  }
+}
+
+func TestParseShorthand_2(t *testing.T) {
+  expression := "d20 + 2d20"
+  result, rolls, error := ParseExpression(expression)
+
+  if error != nil {
+    t.Fatalf("Parsing %s failed with error: %s", expression, error)
+  }
+
+  if len(rolls) != 2 {
+    t.Fatalf("Roll %s: Wrong number of diceroll expressions in result", expression)
+  }
+
+  if rolls[1].Expression != "2d20" {
+    t.Fatalf("Roll %s: 2d20 not found in the results", expression)
+  }
+  
+  if rolls[0].Expression != "d20" {
+    t.Fatalf("Roll %s: d20 not found in the results", expression)
+  }
+
+  if len(rolls[1].Results) != 2 {
+    t.Fatalf("Roll %s: rolled %d instead of 2 dice for 2d20", expression, len(rolls[0].Results))
+  }
+  
+  if len(rolls[0].Results) != 1 {
+    t.Fatalf("Roll %s: rolled %d instead of 1 die for d20", expression, len(rolls[1].Results))
+  }
+
+  sum := 0
+  for _, v := range rolls[1].Results {
+    if v < 1 || v > 20 {
+      t.Fatalf("Roll %s: rolled a %d which is out of range for 2d20", expression, v)
+    }
+    sum += v
+  }
+
+  rollResult := rolls[0].Results[0]
+  if rollResult < 1 || rollResult > 20 {
+    t.Fatalf("Roll %s: got invalid roll result for d20: %d", expression, rollResult)
+  }
+  
+  expected := rollResult + sum
+  if result != expected {
+    t.Fatalf("Roll %s: Result was %d instead of %d", expression, result, expected)
+  }
+}
