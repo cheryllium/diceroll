@@ -33,6 +33,9 @@ func sendDiscordMessage(s* discordgo.Session, i *discordgo.InteractionCreate, me
     Type: discordgo.InteractionResponseChannelMessageWithSource,
     Data: &discordgo.InteractionResponseData{
       Content: message,
+      AllowedMentions: &discordgo.MessageAllowedMentions{
+        Parse: []discordgo.AllowedMentionType{},
+      },
     },
   })
 }
