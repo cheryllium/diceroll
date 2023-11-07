@@ -3,6 +3,7 @@ package main
 import (
   "fmt"
   "strings"
+  "strconv"
   
   "os"
   "os/signal"
@@ -15,7 +16,24 @@ import (
 func formatRollResult(expression string, result int, rolls []DiceRoll) string {
   rollResults := ""
   for _, r := range rolls {
-    rollResults += fmt.Sprintf("> 🎲 **%s** %v\n", r.Expression, r.Results)
+    parts := strings.Split(r.Expression, "d")
+    max, _ := strconv.Atoi(parts[1])
+
+    if max <= 2 {
+      rollResults += fmt.Sprintf("> 🎲 **%s** %v\n", r.Expression, r.Results)
+    } else {
+      resultsDisplay := []string{}
+      for _, result := range r.Results {
+        if result == 1 {
+          resultsDisplay = append(resultsDisplay, fmt.Sprintf("🔻**%d**", result))
+        } else if result == max {
+          resultsDisplay = append(resultsDisplay, fmt.Sprintf("🔺**%d**", result))
+        } else {
+          resultsDisplay = append(resultsDisplay, fmt.Sprintf("%d", result))
+        }
+      }
+      rollResults += fmt.Sprintf("> 🎲 **%s** %v\n", r.Expression, resultsDisplay)
+    }
   }
   return fmt.Sprintf(
     "You asked me to roll: `%s`\nYou rolled a **%d**!\n> *ROLL RESULTS*\n%s",
