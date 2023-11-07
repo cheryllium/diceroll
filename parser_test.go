@@ -129,7 +129,7 @@ func TestParseDiceWithMath(t *testing.T) {
     }
 
     if rolls[0].Expression != "1d20" {
-      t.Fatalf("Roll 1d20 + 5: 1d20 not found in the results, %s")
+      t.Fatalf("Roll 1d20 + 5: 1d20 not found in the results")
     }
 
     if len(rolls[0].Results) != 1 {
