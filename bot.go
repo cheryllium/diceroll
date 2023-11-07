@@ -18,7 +18,7 @@ func formatRollResult(expression string, result int, rolls []DiceRoll) string {
     rollResults += fmt.Sprintf("> 🎲 **%s** %v\n", r.Expression, r.Results)
   }
   return fmt.Sprintf(
-    "You asked me to roll: %s\nYou rolled a **%d**!\n> *ROLL RESULTS*\n%s",
+    "You asked me to roll: `%s`\nYou rolled a **%d**!\n> *ROLL RESULTS*\n%s",
     expression,
     result,
     rollResults,
