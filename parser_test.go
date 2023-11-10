@@ -273,3 +273,13 @@ func TestParseShorthand_2(t *testing.T) {
     t.Fatalf("Roll %s: Result was %d instead of %d", expression, result, expected)
   }
 }
+
+/* Test that filling a macro works as expected */
+func TestFillMacro(t *testing.T) {
+  macro := "A + (B / 2)"
+  inputs := []string{"2d20", "10"}
+  result := FillMacro(macro, inputs)
+  if result != "2d20 + (10 / 2)" {
+    t.Fatalf("FillMacro failed; gave result %s", result)
+  }
+}
