@@ -238,7 +238,7 @@ func FillMacro(input string, variables[]string) string {
   variablesMap := make(map[string]string)
   for i, v := range variables {
     if i < 26 {
-      key := string('A' + i)
+      key := string(rune('A' + i))
       variablesMap[key] = v
     }
   }
